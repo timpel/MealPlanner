@@ -42,63 +42,119 @@ stillneed(_, [], []).
 %%% Input.
 
 % Adding an ingredient.
-input(['i', 'have', X | _]) :-
-  have(X), !.
-input(['i', 'have', X | _]) :-
-  assert(have(X)).
-input(['i', 'bought', X | _]) :-
-  have(X), !.
-input(['i', 'bought', X | _]) :-
-  assert(have(X)).
+input(['add' | []]).
+
+input(['add', H | T]) :-
+  have(H),
+  write("You already have: "), write(H), write(".\n"), flush_output(current_output),
+  input(['add'| T]), !.
+
+input(['add', H | T]) :-
+  assert(have(H)),
+  write("Added: "), write(H), write(".\n"), flush_output(current_output),
+  input(['add'| T]), !.
+
+input(['i', 'have' | T]) :-
+  input(['add' | T]).
+
+input(['i', 'bought', T]) :-
+  input(['add' | T]).
+
+% Querying for a single ingredient.
+input(['do', 'i', 'have', X]) :-
+  have(X),
+  write("Yes you have "),
+  write(X), write(".\n"), flush_output(current_output), !.
+
+input(['do', 'i', 'have', X]) :-
+  \+ have(X),
+  write("No, you do not have "),
+  write(X), write(".\n"), flush_output(current_output), !.
+
+input(['do', 'i', 'have', D, X]) :-
+  det(D), input(['do', 'i', 'have', X]).
 
 % Get all ingredients.
 input(['what', 'do', 'i', 'have' | _]) :-
   findall(X, have(X), List_of_ingredients),
   write("The current ingredients are: "),
-  write(List_of_ingredients), flush_output(current_output).
+  write(List_of_ingredients), write(".\n"), flush_output(current_output).
 
 % Removing an ingredient.
-input(['i', 'used', X | _]) :-
-  have(X), retract(have(X)),
-  write("Removed: "), write(X), flush_output(current_output), !.
-input(['i', 'used', X | _]) :-
-  write("You didn't have item: "), write(X), flush_output(current_output).
-input(['i', 'do', 'not', 'have', X | _]) :-
-  have(X), retract(have(X)),
-  write("Removed: "), write(X), flush_output(current_output), !.
-input(['i', 'do', 'not', 'have', X | _]) :-
-  write("You didn't have item: "), write(X), flush_output(current_output).
+input(['remove' | []]).
 
-% Adding a recipe.
+input(['remove', H | T]) :-
+  have(H),
+  retract(have(H)),
+  write("Removed: "),
+  write(H), write(".\n"), flush_output(current_output),
+  input(['remove'| T]), !.
+
+input(['remove', H | T]) :-
+  \+ have(H),
+  write("You didn't have item: "),
+  write(H), write(".\n"), flush_output(current_output),
+  input(['remove'| T]), !.
+
+input(['i', 'used' | T]) :-
+  input(['remove' | T]).
+
+input(['i', 'do', 'not', 'have' | T]) :-
+  input(['remove' | T]).
+
+% Adding (or modifying) a recipe.
 input([X, ':' | R]) :-
   remove_punc(R, T),
-  requires(X,T), !.
+  requires(X,T),
+  write("You already have this recipe for "),
+  write(X), write(".\n"), flush_output(current_output), !.
+
 input([X, ':' | R]) :-
   remove_punc(R, T),
-  assert(requires(X,T)).
+  requires(X,_),
+  retract(requires(X,_)),
+  assert(requires(X,T)),
+  write("The recipe for "),
+  write(X), write(" has been updated.\n"), flush_output(current_output), !.
+
+input([X, ':' | R]) :-
+  remove_punc(R, T),
+  assert(requires(X,T)),
+  write("Recipe added for "),
+  write(X), write(".\n"), flush_output(current_output), !.
 
 % Querying for all recipes (whether they can be made or not).
-input(['list', 'recipes' | _]) :-
+input(['list', 'recipes']) :-
   findall((X,Y), requires(X,Y), Z),
   write("Your recipes are: "),
-  write(Z), flush_output(current_output).
+  write(Z), write(".\n"), flush_output(current_output).
 
-input(['list', X, 'recipes' | _]) :-
+input(['list', X, 'recipes']) :-
   det_for_plural(X),
-  input(['list', 'recipes' | _]).
+  input(['list', 'recipes']).
+
+input(['what', 'are', X, 'recipes']) :-
+  any_det(X),
+  input(['list', 'recipes']).
+
+input(['what', 'are', X, Y, 'recipes']) :-
+  det_for_plural(X),
+  det(Y),
+  input(['list', 'recipes']).
+
 
 % Querying if a recipe can be made.
 input(['can', 'i', 'make', X | _]) :-
   requires(X, Ings),
   stillneed(X, Ings, []),
   write("You have all the ingredients for "),
-  write(X), flush_output(current_output), !.
+  write(X), write(".\n"), flush_output(current_output), !.
 
 input(['can', 'i', 'make', X | _]) :-
   requires(X, Ings),
   stillneed(X, Ings, L),
   write("No, you are missing the following ingredients: "),
-  write(L), flush_output(current_output), !.
+  write(L), write(".\n"), flush_output(current_output), !.
 
 input(['can', 'i', 'make', Y, X | _]) :-
   det(Y),
@@ -108,22 +164,24 @@ input(['can', 'i', 'make', Y, X | _]) :-
 input(['what', 'can', 'i', 'make' | _]) :-
   findall(X, (requires(X,Y), canmake(X,Y)), Z),
   write("The items you can make are: "),
-  write(Z), flush_output(current_output).
+  write(Z), write(".\n"), flush_output(current_output).
 
 % Politeness.
 input(['please' | T]) :- input(T).
 
 % Unrecognized input. Must be the last input case.
 input(_) :-
-  write("Input Not Recognized. Please try Another."), flush_output(current_output).
+  write("Input Not Recognized. Please try Another.\n"), flush_output(current_output).
 
 % member(X,L) is true if X is an element of list L
   member(X,[X|_]).
   member(X,[_|R]) :- member(X, R).
 
 % determiners
-  det(X) :- member(X, ['a','an','the','one','some']).
-  det_for_plural(X) :- member(X, ['some','all','my']).
+  det(X) :- member(X, ['a','an','the','one','some','any', 'my']).
+  det_for_plural(X) :- member(X, ['some','all','my','the']).
+  any_det(X) :- det(X), !.
+  any_det(X) :- det_for_plural(X), !.
 
 % punctuation
   punctuation(X) :- member(X, ['.',',','!','?']).
