@@ -3,7 +3,6 @@
 ----------- By Tim Pellissier and Jordan Kroll --------------
 */
 
-
 % Make procedures dynamic
 :- dynamic have/1.
 :- dynamic requires/2.
@@ -84,6 +83,10 @@ input(['list', 'recipes' | _]) :-
   write("Your recipes are: "),
   write(Z), flush_output(current_output).
 
+input(['list', X, 'recipes' | _]) :-
+  det_for_plural(X),
+  input(['list', 'recipes' | _]).
+
 % Querying if a recipe can be made.
 input(['can', 'i', 'make', X | _]) :-
   requires(X, Ings),
@@ -97,21 +100,30 @@ input(['can', 'i', 'make', X | _]) :-
   write("No, you are missing the following ingredients: "),
   write(L), flush_output(current_output), !.
 
+input(['can', 'i', 'make', Y, X | _]) :-
+  det(Y),
+  input(['can', 'i', 'make', X | _]).
+
 % Querying for potential meals.
 input(['what', 'can', 'i', 'make' | _]) :-
   findall(X, (requires(X,Y), canmake(X,Y)), Z),
   write("The items you can make are: "),
   write(Z), flush_output(current_output).
 
-input(["what" | T]) :-
-  write("Weird case: "), write(T), flush_output(current_output).
+% Politeness.
+input(['please' | T]) :- input(T).
 
-input(L) :-
-  write("Failed all input cases: "), write(L), flush_output(current_output).
+% Unrecognized input. Must be the last input case.
+input(_) :-
+  write("Input Not Recognized. Please try Another."), flush_output(current_output).
 
 % member(X,L) is true if X is an element of list L
   member(X,[X|_]).
   member(X,[_|R]) :- member(X, R).
+
+% determiners
+  det(X) :- member(X, ['a','an','the','one','some']).
+  det_for_plural(X) :- member(X, ['some','all','my']).
 
 % punctuation
   punctuation(X) :- member(X, ['.',',','!','?']).
