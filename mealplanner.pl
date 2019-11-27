@@ -75,10 +75,27 @@ input(['do', 'i', 'have', D, X]) :-
   det(D), input(['do', 'i', 'have', X]).
 
 % Get all ingredients.
-input(['what', 'do', 'i', 'have' | _]) :-
+input(['ingredients']) :-
   findall(X, have(X), List_of_ingredients),
   write("The current ingredients are: "),
   write(List_of_ingredients), write(".\n"), flush_output(current_output).
+
+input(['what', 'do', 'i', 'have' | _]) :-
+  input(['ingredients']).
+
+input(['list','ingredients']) :-
+  input(['ingredients']).
+
+input(['list', D, 'ingredients']) :-
+  det_for_plural(D),
+  input(['ingredients']).
+
+input(['get','ingredients']) :-
+  input(['ingredients']).
+
+input(['get', D, 'ingredients']) :-
+  det_for_plural(D),
+  input(['ingredients']).
 
 % Removing an ingredient.
 input(['remove' | []]).
@@ -104,22 +121,19 @@ input(['i', 'do', 'not', 'have' | T]) :-
 
 % Adding (or modifying) a recipe.
 input([X, ':' | R]) :-
-  remove_punc(R, T),
-  requires(X,T),
+  requires(X,R),
   write("You already have this recipe for "),
   write(X), write(".\n"), flush_output(current_output), !.
 
 input([X, ':' | R]) :-
-  remove_punc(R, T),
   requires(X,_),
   retract(requires(X,_)),
-  assert(requires(X,T)),
+  assert(requires(X,R)),
   write("The recipe for "),
   write(X), write(" has been updated.\n"), flush_output(current_output), !.
 
 input([X, ':' | R]) :-
-  remove_punc(R, T),
-  assert(requires(X,T)),
+  assert(requires(X,R)),
   write("Recipe added for "),
   write(X), write(".\n"), flush_output(current_output), !.
 
@@ -133,14 +147,26 @@ input(['list', X, 'recipes']) :-
   det_for_plural(X),
   input(['list', 'recipes']).
 
+input(['list', X, Y, 'recipes']) :-
+  det_for_plural(X),
+  det(Y),
+  input(['list', 'recipes']).
+
 input(['what', 'are', X, 'recipes']) :-
   any_det(X),
   input(['list', 'recipes']).
 
 input(['what', 'are', X, Y, 'recipes']) :-
-  det_for_plural(X),
-  det(Y),
+  input(['list', X, Y, 'recipes']).
+
+input(['get', 'recipes']) :-
   input(['list', 'recipes']).
+
+input(['get', X, 'recipes']) :-
+  input(['list', X, 'recipes']).
+
+input(['get', X, Y, 'recipes']) :-
+  input(['list', X, Y, 'recipes']).
 
 
 % Querying if a recipe can be made.
@@ -166,12 +192,28 @@ input(['what', 'can', 'i', 'make' | _]) :-
   write("The items you can make are: "),
   write(Z), write(".\n"), flush_output(current_output).
 
+% Saving to file.
+input(['save']) :-
+  save.
+
+input(['save','store']) :- save.
+
+% Loading a file.
+input(['load']) :-
+  [store],
+  write("Ingredients and recipes have been successfully loaded.\n"), flush_output(current_output).
+
+input(['load','store']) :- input(['load']).
+
+
 % Politeness.
 input(['please' | T]) :- input(T).
 
 % Unrecognized input. Must be the last input case.
 input(_) :-
   write("Input Not Recognized. Please try Another.\n"), flush_output(current_output).
+
+%%% Helper Functions.
 
 % member(X,L) is true if X is an element of list L
   member(X,[X|_]).
@@ -184,12 +226,43 @@ input(_) :-
   any_det(X) :- det_for_plural(X), !.
 
 % punctuation
-  punctuation(X) :- member(X, ['.',',','!','?']).
+  punctuation(X) :- member(X, ['.',',','!','?']). % Does not include ':'
 
 % remove all punctuation: O is list I with punctuation removed.
   remove_punc([], []).
   remove_punc([H | R], O) :- punctuation(H), !, remove_punc(R, O).
   remove_punc([H | R], [H | O]) :- remove_punc(R, O).
+
+%%% Writing to file.
+save :-
+  open('store.pl',write,Stream),
+  write(Stream, ":- dynamic have/1.\n"),
+  write(Stream, ":- dynamic requires/2.\n"),
+  findall(X, have(X), Ingredients),
+  saveItems(Stream, Ingredients),
+  findall(Y, requires(Y, _), Recipes),
+  saveRecipes(Stream, Recipes),
+  close(Stream),
+  write("Ingredients and recipes have been successfully saved.\n"), flush_output(current_output).
+
+saveItems(_, []).
+saveItems(Stream, [H | T]) :-
+  write(Stream, "have("),
+  write(Stream, H),
+  write(Stream, ").\n"),
+  saveItems(Stream, T).
+
+saveRecipes(_, []).
+saveRecipes(Stream, [H | T]) :-
+  write(Stream, "requires("),
+  write(Stream, H),
+  write(Stream, ", "),
+  requires(H, L),
+  write(Stream, L),
+  write(Stream, ").\n"),
+  saveRecipes(Stream, T).
+
+%%% Interactive Loop
 
 % checkquit loop
 checkquit(['ex' | _]) :- !.
@@ -202,5 +275,6 @@ i :- q.
 q :-
   write("\nAsk a query, update recipes, or update ingredients: "), flush_output(current_output),
   readln(L),     % L is an array of words
-  maplist([I,O]>>(downcase_atom(I,O)), L, N),
-  checkquit(N).
+  remove_punc(L, L2),
+  maplist([I,O]>>(downcase_atom(I,O)), L2, L3),
+  checkquit(L3).
