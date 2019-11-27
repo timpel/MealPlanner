@@ -43,31 +43,31 @@ stillneed(_, [], []).
 %%% Input.
 
 % Adding an ingredient.
-input(['I', 'have', X | _]) :-
+input(['i', 'have', X | _]) :-
   have(X), !.
-input(['I', 'have', X | _]) :-
+input(['i', 'have', X | _]) :-
   assert(have(X)).
-input(['I', 'bought', X | _]) :-
+input(['i', 'bought', X | _]) :-
   have(X), !.
-input(['I', 'bought', X | _]) :-
+input(['i', 'bought', X | _]) :-
   assert(have(X)).
 
 % Get all ingredients.
-input(['What', 'do', 'I', 'have' | _]) :-
+input(['what', 'do', 'i', 'have' | _]) :-
   findall(X, have(X), List_of_ingredients),
   write("The current ingredients are: "),
   write(List_of_ingredients), flush_output(current_output).
 
 % Removing an ingredient.
-input(['I', 'used', X | _]) :-
+input(['i', 'used', X | _]) :-
   have(X), retract(have(X)),
   write("Removed: "), write(X), flush_output(current_output), !.
-input(['I', 'used', X | _]) :-
+input(['i', 'used', X | _]) :-
   write("You didn't have item: "), write(X), flush_output(current_output).
-input(['I', 'do', 'not', 'have', X | _]) :-
+input(['i', 'do', 'not', 'have', X | _]) :-
   have(X), retract(have(X)),
   write("Removed: "), write(X), flush_output(current_output), !.
-input(['I', 'do', 'not', 'have', X | _]) :-
+input(['i', 'do', 'not', 'have', X | _]) :-
   write("You didn't have item: "), write(X), flush_output(current_output).
 
 % Adding a recipe.
@@ -79,29 +79,35 @@ input([X, ':' | R]) :-
   assert(requires(X,T)).
 
 % Querying for all recipes (whether they can be made or not).
-input(['List', 'Recipes' | _]) :-
+input(['list', 'recipes' | _]) :-
   findall((X,Y), requires(X,Y), Z),
   write("Your recipes are: "),
   write(Z), flush_output(current_output).
 
 % Querying if a recipe can be made.
-input(['Can', 'I', 'make', X | _]) :-
+input(['can', 'i', 'make', X | _]) :-
   requires(X, Ings),
   stillneed(X, Ings, []),
   write("You have all the ingredients for "),
   write(X), flush_output(current_output), !.
 
-input(['Can', 'I', 'make', X | _]) :-
+input(['can', 'i', 'make', X | _]) :-
   requires(X, Ings),
   stillneed(X, Ings, L),
   write("No, you are missing the following ingredients: "),
   write(L), flush_output(current_output), !.
 
 % Querying for potential meals.
-input(['What', 'can', 'I', 'make' | _]) :-
+input(['what', 'can', 'i', 'make' | _]) :-
   findall(X, (requires(X,Y), canmake(X,Y)), Z),
   write("The items you can make are: "),
   write(Z), flush_output(current_output).
+
+input(["what" | T]) :-
+  write("Weird case: "), write(T), flush_output(current_output).
+
+input(L) :-
+  write("Failed all input cases: "), write(L), flush_output(current_output).
 
 % member(X,L) is true if X is an element of list L
   member(X,[X|_]).
@@ -125,5 +131,6 @@ checkquit(L) :-
 i :- q.
 q :-
   write("\nAsk a query, update recipes, or update ingredients: "), flush_output(current_output),
-  readln(Ln), % Ln is an array of words.
-  checkquit(Ln).
+  readln(L),     % L is an array of words
+  maplist([I,O]>>(downcase_atom(I,O)), L, N),
+  checkquit(N).
