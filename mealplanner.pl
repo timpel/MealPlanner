@@ -205,6 +205,14 @@ input(['load']) :-
 
 input(['load','store']) :- input(['load']).
 
+% Asking for info
+input(['h']) :- info.
+input(['help']) :- info.
+input(['info']) :- info.
+input(['what','can','i','ask']) :- info.
+input(['what','can','i','do']) :- info.
+input(['list','queries']) :- list_queries.
+input(['list','commands']) :- list_commands.
 
 % Politeness.
 input(['please' | T]) :- input(T).
@@ -261,6 +269,37 @@ saveRecipes(Stream, [H | T]) :-
   write(Stream, L),
   write(Stream, ").\n"),
   saveRecipes(Stream, T).
+
+%%% Info
+
+info :-
+  list_commands,
+  list_queries,
+  write("\nNote that there are variants of the above commands and queries. All of them are case insensitive. All punctuation other than ':' is ignored.\n"),
+  flush_output(current_output).
+
+list_commands :-
+  write("Commands:\n"),
+  write("  To add ingredients: add <ingredient> ...\n"),
+  write("  To remove ingredients: remove <ingredient> ...\n"),
+  write("  To add a recipe: <recipe>: <ingredient> ...\n"),
+  write("      To modify a recipe: <recipe>: <ingredient> ...\n"),
+  write("  To load stored ingredients and recipes (from file): load\n"),
+  write("  To store ingredients and recipes (save to file): save\n"),
+  flush_output(current_output).
+
+list_queries :-
+  write("Queries:\n"),
+  write("  To get a list of all ingredients: What do I have?\n"),
+  write("      Alternate query: list ingredients\n"),
+  write("  To query for a particular ingredient: Do I have <ingredient>?\n"),
+  write("  To get a list of all recipes: What are my recipes?\n"),
+  write("      Alternate query: list recipes\n"),
+  write("  To query for whether a recipe can be made: Can I make <recipe>?\n"),
+  write("  To query for all recipes that can be made: What can I make?\n"),
+  flush_output(current_output).
+
+h :- info.
 
 %%% Interactive Loop
 
