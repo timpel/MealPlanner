@@ -6,15 +6,7 @@
 % Make procedures dynamic
 :- dynamic have/1.
 :- dynamic requires/2.
-
-% Default Ingredients
-have(mushrooms).
-have(salt).
-have(pepper).
-have(cheese).
-
-% Default Recipes
-requires(omelette, [eggs, salt, pepper, cheese]).
+:- dynamic current_user/1.
 
 % canmake item I with given list of ingredients.
 canmake(_, []).
@@ -38,6 +30,9 @@ stillneed(I, [H | T], O) :-
   stillneed(I, T, O).
 
 stillneed(_, [], []).
+
+% The current user. Starts as 'default'.
+current_user('default').
 
 %%% Input.
 
@@ -75,6 +70,12 @@ input(['do', 'i', 'have', D, X]) :-
   det(D), input(['do', 'i', 'have', X]).
 
 % Get all ingredients.
+input(['ingredients']) :-
+  \+ have(_),
+  write("You currently don't have any ingredients!\n"),
+  write("You can add an ingredient by writing: add <ingredient>\n"),
+  flush_output(current_output), !.
+
 input(['ingredients']) :-
   findall(X, have(X), List_of_ingredients),
   write("The current ingredients are: "),
@@ -139,6 +140,12 @@ input([X, ':' | R]) :-
 
 % Querying for all recipes (whether they can be made or not).
 input(['list', 'recipes']) :-
+  \+ requires(_, _),
+  write("You currently don't have any recipes!\n"),
+  write("You can add a recipe by writing: <recipe>: <ingredient>\n"),
+  flush_output(current_output), !.
+
+input(['list', 'recipes']) :-
   findall((X,Y), requires(X,Y), Z),
   write("Your recipes are: "),
   write(Z), write(".\n"), flush_output(current_output).
@@ -199,11 +206,59 @@ input(['save']) :-
 input(['save','store']) :- save.
 
 % Loading a file.
-input(['load']) :-
-  [store],
-  write("Ingredients and recipes have been successfully loaded.\n"), flush_output(current_output).
+input(['load']) :- load.
+input(['load','store']) :- load('store').
 
-input(['load','store']) :- input(['load']).
+% Querying user
+input(['user']) :-
+  current_user(U),
+  write("The current user is: "), write(U),
+  write(".\n"), flush_output(current_output), !.
+
+input(['current','user']) :- input(['user']).
+input(['the','current','user']) :- input(['user']).
+input(['get','current','user']) :- input(['user']).
+input(['get','the','user']) :- input(['user']).
+input(['get','the','current','user']) :- input(['user']).
+input(['who','is','the','current','user']) :- input(['user']).
+
+% Changing user
+input(['login', U]) :-
+  current_user(U),
+  write("User "), write(U),
+  write(" is already logged in.\n"), flush_output(current_output), !.
+
+input(['login', U]) :-
+  current_user(X),
+  retractall(current_user(_)),
+  assert(current_user(U)),
+  save_if_not_empty(X),
+  retractall(have(_)),
+  retractall(requires(_,_)),
+  write("User "), write(U),
+  write(" has been logged in.\n"), flush_output(current_output),
+  load, !.
+
+% Fallback case if current_user is manually retracted.
+input(['login', U]) :-
+  retractall(current_user(_)),
+  assert(current_user(U)),
+  retractall(have(_)),
+  retractall(requires(_,_)),
+  write("User "), write(U),
+  write(" has been logged in.\n"), flush_output(current_output),
+  load, !.
+
+input(['login']) :- input(['login', 'default']).
+input(['logout']) :- input(['login', 'default']).
+
+input(['logout', U]) :-
+  current_user(U),
+  input(['login', 'default']), !.
+input(['logout', U]) :-
+  write("Logout failed. User "), write(U),
+  write(" is not currently logged in.\n"), flush_output(current_output).
+
 
 % Asking for info
 input(['h']) :- info.
@@ -242,16 +297,28 @@ input(_) :-
   remove_punc([H | R], [H | O]) :- remove_punc(R, O).
 
 %%% Writing to file.
+
 save :-
-  open('store.pl',write,Stream),
+  current_user(U),
+  save(U), !.
+
+save('default') :- save('store'), !.
+
+save(N) :-
+  atom_concat(N,'.pl',Filename),
+  open(Filename,write,Stream),
+  write(Stream, "% Make procedures dynamic\n"),
   write(Stream, ":- dynamic have/1.\n"),
   write(Stream, ":- dynamic requires/2.\n"),
   findall(X, have(X), Ingredients),
+  write(Stream, "\n%%% Ingredients\n"),
   saveItems(Stream, Ingredients),
   findall(Y, requires(Y, _), Recipes),
+  write(Stream, "\n%%% Recipes\n"),
   saveRecipes(Stream, Recipes),
   close(Stream),
-  write("Ingredients and recipes have been successfully saved.\n"), flush_output(current_output).
+  write("Data for previous user has been saved to: "),
+  write(Filename), write(".\n"), flush_output(current_output).
 
 saveItems(_, []).
 saveItems(Stream, [H | T]) :-
@@ -269,6 +336,34 @@ saveRecipes(Stream, [H | T]) :-
   write(Stream, L),
   write(Stream, ").\n"),
   saveRecipes(Stream, T).
+
+save_if_not_empty(U) :-
+  have(_),
+  requires(_, _),
+  save(U).
+
+%%% Loading from file.
+load :-
+  current_user(U),
+  load(U), !.
+
+load('default') :- load('store'), !.
+
+load(U) :-
+  atom_concat(U,'.pl',Filename),
+  exists_file(Filename),
+  [U],
+  write("Saved data has been successfully loaded from file: "),
+  write(Filename), write(".\n"),
+  flush_output(current_output), !.
+
+load(U) :-
+  atom_concat(U,'.pl',Filename),
+  \+ exists_file(Filename),
+  write("No file exists for user: "), write(U), write(".\n"),
+  write("If you have logged in a new user, ignore this warning.\n"),
+  flush_output(current_output), !.
+
 
 %%% Info
 
