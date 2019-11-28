@@ -79,9 +79,9 @@ input(['ingredients']) :-
 input(['ingredients']) :-
   findall(X, have(X), List_of_ingredients),
   write("The current ingredients are: "),
-  write(List_of_ingredients), write(".\n"), flush_output(current_output).
+  write(List_of_ingredients), write(".\n"), flush_output(current_output), !.
 
-input(['what', 'do', 'i', 'have' | _]) :-
+input(['what', 'do', 'i', 'have']) :-
   input(['ingredients']).
 
 input(['list','ingredients']) :-
@@ -148,16 +148,16 @@ input(['list', 'recipes']) :-
 input(['list', 'recipes']) :-
   findall((X,Y), requires(X,Y), Z),
   write("Your recipes are: "),
-  write(Z), write(".\n"), flush_output(current_output).
+  write(Z), write(".\n"), flush_output(current_output), !.
 
 input(['list', X, 'recipes']) :-
   det_for_plural(X),
-  input(['list', 'recipes']).
+  input(['list', 'recipes']), !.
 
 input(['list', X, Y, 'recipes']) :-
   det_for_plural(X),
   det(Y),
-  input(['list', 'recipes']).
+  input(['list', 'recipes']), !.
 
 input(['what', 'are', X, 'recipes']) :-
   any_det(X),
@@ -177,37 +177,44 @@ input(['get', X, Y, 'recipes']) :-
 
 
 % Querying if a recipe can be made.
-input(['can', 'i', 'make', X | _]) :-
+input(['can', 'i', 'make', X]) :-
+  \+ requires(X, _),
+  write("You do not have a recipe for "),
+  write(X), write(".\nTo add a recipe write: "),
+  write(X), write(": <ingredient> ...\n"),
+  flush_output(current_output), !.
+
+input(['can', 'i', 'make', X]) :-
   requires(X, Ings),
   stillneed(X, Ings, []),
   write("You have all the ingredients for "),
   write(X), write(".\n"), flush_output(current_output), !.
 
-input(['can', 'i', 'make', X | _]) :-
+input(['can', 'i', 'make', X]) :-
   requires(X, Ings),
   stillneed(X, Ings, L),
   write("No, you are missing the following ingredients: "),
   write(L), write(".\n"), flush_output(current_output), !.
 
-input(['can', 'i', 'make', Y, X | _]) :-
+input(['can', 'i', 'make', Y, X]) :-
   det(Y),
-  input(['can', 'i', 'make', X | _]).
+  input(['can', 'i', 'make', X]).
 
 % Querying for potential meals.
-input(['what', 'can', 'i', 'make' | _]) :-
+input(['what', 'can', 'i', 'make']) :-
   findall(X, (requires(X,Y), canmake(X,Y)), Z),
   write("The items you can make are: "),
-  write(Z), write(".\n"), flush_output(current_output).
+  write(Z), write(".\n"), flush_output(current_output), !.
 
 % Saving to file.
 input(['save']) :-
-  save.
+  save, !.
 
-input(['save','store']) :- save.
+input(['save','store']) :- save, !.
 
 % Loading a file.
-input(['load']) :- load.
-input(['load','store']) :- load('store').
+input(['load']) :- load, !.
+input(['load','store']) :- load('store'), !.
 
 % Querying user
 input(['user']) :-
@@ -257,20 +264,20 @@ input(['logout', U]) :-
   input(['login', 'default']), !.
 input(['logout', U]) :-
   write("Logout failed. User "), write(U),
-  write(" is not currently logged in.\n"), flush_output(current_output).
+  write(" is not currently logged in.\n"), flush_output(current_output), !.
 
 
 % Asking for info
-input(['h']) :- info.
-input(['help']) :- info.
-input(['info']) :- info.
-input(['what','can','i','ask']) :- info.
-input(['what','can','i','do']) :- info.
-input(['list','queries']) :- list_queries.
-input(['list','commands']) :- list_commands.
+input(['h']) :- info, !.
+input(['help']) :- info, !.
+input(['info']) :- info, !.
+input(['what','can','i','ask']) :- info, !.
+input(['what','can','i','do']) :- info, !.
+input(['list','queries']) :- list_queries, !.
+input(['list','commands']) :- list_commands, !.
 
 % Politeness.
-input(['please' | T]) :- input(T).
+input(['please' | T]) :- input(T), !.
 
 % Unrecognized input. Must be the last input case.
 input(_) :-
@@ -317,15 +324,15 @@ save(N) :-
   write(Stream, "\n%%% Recipes\n"),
   saveRecipes(Stream, Recipes),
   close(Stream),
-  write("Data for previous user has been saved to: "),
-  write(Filename), write(".\n"), flush_output(current_output).
+  write("Data for current user has been saved to: "),
+  write(Filename), write(".\n"), flush_output(current_output), !.
 
 saveItems(_, []).
 saveItems(Stream, [H | T]) :-
   write(Stream, "have("),
   write(Stream, H),
   write(Stream, ").\n"),
-  saveItems(Stream, T).
+  saveItems(Stream, T), !.
 
 saveRecipes(_, []).
 saveRecipes(Stream, [H | T]) :-
@@ -335,12 +342,17 @@ saveRecipes(Stream, [H | T]) :-
   requires(H, L),
   write(Stream, L),
   write(Stream, ").\n"),
-  saveRecipes(Stream, T).
+  saveRecipes(Stream, T), !.
 
 save_if_not_empty(U) :-
   have(_),
   requires(_, _),
-  save(U).
+  save(U), !.
+
+save_if_not_empty(U) :-
+  write("Nothing to save for user "),
+  write(U), write(".\n"),
+  flush_output(current_output), !.
 
 %%% Loading from file.
 load :-
@@ -399,13 +411,23 @@ h :- info.
 %%% Interactive Loop
 
 % checkquit loop
-checkquit(['ex' | _]) :- !.
-checkquit(['exit' | _]) :- !.
+checkquit(['ex' | _]) :-
+  current_user(U),
+  save_if_not_empty(U), !.
+checkquit(['exit' | _]) :- checkquit(['ex' | _]), !.
 checkquit(L) :-
   input(L),
   q.
 
-i :- q.
+start :- i.
+i :-
+  retractall(current_user(_)),
+  assert(current_user('default')),
+  retractall(have(_)),
+  retractall(requires(_,_)),
+  load('store'),
+  q.
+
 q :-
   write("\nAsk a query, update recipes, or update ingredients: "), flush_output(current_output),
   readln(L),     % L is an array of words

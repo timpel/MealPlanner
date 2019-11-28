@@ -7,6 +7,7 @@ have(mushrooms).
 have(salt).
 have(pepper).
 have(cheese).
+have(eggs).
 
 %%% Recipes
 requires(omelette, [eggs,salt,pepper,cheese]).
