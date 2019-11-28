@@ -175,6 +175,30 @@ input(['get', X, 'recipes']) :-
 input(['get', X, Y, 'recipes']) :-
   input(['list', X, Y, 'recipes']).
 
+% Querying for an individual recipe.
+input(['recipe', X]) :-
+  requires(X, L),
+  write("The recipe for "),
+  write(X), write(" has the following ingredients: "),
+  write(L), write("\n"),
+  flush_output(current_output), !.
+
+input(['recipe', X]) :-
+  \+ requires(X, _),
+  write("You do not have a recipe for "),
+  write(X), write(".\nTo add a recipe write: "),
+  write(X), write(": <ingredient> ...\n"),
+  flush_output(current_output), !.
+
+input(['get','recipe', X]) :- input(['recipe', X]).
+input(['get', D,'recipe', X]) :-
+  det(D),
+  input(['recipe', X]).
+input(['get', D,'recipe', 'for', X]) :- input(['get', D,'recipe', X]).
+input(['get', D,'recipe', 'for', D2, X]) :-
+  det(D2),
+  input(['get', D,'recipe', X]).
+input(['what','is', D, 'recipe', 'for', X]) :- input(['get', D,'recipe', X]).
 
 % Querying if a recipe can be made.
 input(['can', 'i', 'make', X]) :-
@@ -229,7 +253,7 @@ input(['get','the','user']) :- input(['user']).
 input(['get','the','current','user']) :- input(['user']).
 input(['who','is','the','current','user']) :- input(['user']).
 
-% Changing user
+% Changing user (login/logout)
 input(['login', U]) :-
   current_user(U),
   write("User "), write(U),
@@ -265,7 +289,6 @@ input(['logout', U]) :-
 input(['logout', U]) :-
   write("Logout failed. User "), write(U),
   write(" is not currently logged in.\n"), flush_output(current_output), !.
-
 
 % Asking for info
 input(['h']) :- info, !.
@@ -380,28 +403,35 @@ load(U) :-
 %%% Info
 
 info :-
+  write("\n----Welcome to the help page for the Meal Planner!----\n"),
+  write("To begin issuing commands or queries type: start. or i.\n"),
   list_commands,
   list_queries,
-  write("\nNote that there are variants of the above commands and queries. All of them are case insensitive. All punctuation other than ':' is ignored.\n"),
+  write("\nNote that there are variants of the above commands and queries.\n"),
+  write("All commands and queries are case insensitive.\n"),
+  write("All punctuation other than ':' is ignored.\n"),
   flush_output(current_output).
 
 list_commands :-
-  write("Commands:\n"),
+  write("\nCommands:\n"),
   write("  To add ingredients: add <ingredient> ...\n"),
   write("  To remove ingredients: remove <ingredient> ...\n"),
   write("  To add a recipe: <recipe>: <ingredient> ...\n"),
   write("      To modify a recipe: <recipe>: <ingredient> ...\n"),
-  write("  To load stored ingredients and recipes (from file): load\n"),
-  write("  To store ingredients and recipes (save to file): save\n"),
+  write("  To log in as a particular user: login <username>\n"),
+  write("      Logging in as a user automatically saves (to file) the state of the\n"),
+  write("      previous user and loads the state of the newly logged in user.\n"),
+  write("  To logout (log back in as default user): logout\n"),
   flush_output(current_output).
 
 list_queries :-
-  write("Queries:\n"),
+  write("\nQueries:\n"),
   write("  To get a list of all ingredients: What do I have?\n"),
   write("      Alternate query: list ingredients\n"),
   write("  To query for a particular ingredient: Do I have <ingredient>?\n"),
   write("  To get a list of all recipes: What are my recipes?\n"),
   write("      Alternate query: list recipes\n"),
+  write("  To query for a particular recipe: What is the recipe for <recipe>?\n"),
   write("  To query for whether a recipe can be made: Can I make <recipe>?\n"),
   write("  To query for all recipes that can be made: What can I make?\n"),
   flush_output(current_output).
