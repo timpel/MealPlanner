@@ -39,6 +39,12 @@ current_user('default').
 % Adding an ingredient.
 input(['add' | []]).
 
+input(['add', D, X]) :-
+  det(D), input(['add', X]).
+
+input(['add', D, X]) :-
+  det_for_plural(D), input(['add', X]).
+
 input(['add', H | T]) :-
   have(H),
   write("You already have: "), write(H), write(".\n"), flush_output(current_output),
@@ -100,6 +106,12 @@ input(['get', D, 'ingredients']) :-
 
 % Removing an ingredient.
 input(['remove' | []]).
+
+input(['remove', D, X]) :-
+  det(D), input(['remove', X]).
+
+input(['remove', D, X]) :-
+  det_for_plural(D), input(['remove', X]).
 
 input(['remove', H | T]) :-
   have(H),
