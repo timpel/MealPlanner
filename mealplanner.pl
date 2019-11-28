@@ -72,7 +72,7 @@ input(['do', 'i', 'have', D, X]) :-
 % Get all ingredients.
 input(['ingredients']) :-
   \+ have(_),
-  write("You currently don't have any ingredients!\n"),
+  write("You currently do not have any ingredients!\n"),
   write("You can add an ingredient by writing: add <ingredient>\n"),
   flush_output(current_output), !.
 
@@ -110,7 +110,7 @@ input(['remove', H | T]) :-
 
 input(['remove', H | T]) :-
   \+ have(H),
-  write("You didn't have item: "),
+  write("You did not have item: "),
   write(H), write(".\n"), flush_output(current_output),
   input(['remove'| T]), !.
 
@@ -141,7 +141,7 @@ input([X, ':' | R]) :-
 % Querying for all recipes (whether they can be made or not).
 input(['list', 'recipes']) :-
   \+ requires(_, _),
-  write("You currently don't have any recipes!\n"),
+  write("You currently do not have any recipes!\n"),
   write("You can add a recipe by writing: <recipe>: <ingredient>\n"),
   flush_output(current_output), !.
 
@@ -429,7 +429,7 @@ i :-
   q.
 
 q :-
-  write("\nAsk a query, update recipes, or update ingredients: "), flush_output(current_output),
+  format("", "\nAsk a query, update recipes, or update ingredients: "),
   readln(L),     % L is an array of words
   remove_punc(L, L2),
   maplist([I,O]>>(downcase_atom(I,O)), L2, L3),
