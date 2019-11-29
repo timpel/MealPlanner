@@ -84,8 +84,9 @@ input(['ingredients']) :-
 
 input(['ingredients']) :-
   findall(X, have(X), List_of_ingredients),
-  write("The current ingredients are: "),
-  write(List_of_ingredients), write(".\n"), flush_output(current_output), !.
+  write("The current ingredients are:\n"),
+  write_list(List_of_ingredients),
+  flush_output(current_output), !.
 
 input(['what', 'do', 'i', 'have']) :-
   input(['ingredients']).
@@ -159,8 +160,9 @@ input(['list', 'recipes']) :-
 
 input(['list', 'recipes']) :-
   findall((X,Y), requires(X,Y), Z),
-  write("Your recipes are: "),
-  write(Z), write(".\n"), flush_output(current_output), !.
+  write("Your recipes are:\n"),
+  write_recipes(Z),
+  flush_output(current_output), !.
 
 input(['list', X, 'recipes']) :-
   det_for_plural(X),
@@ -338,6 +340,20 @@ input(_) :-
   remove_punc([H | R], O) :- punctuation(H), !, remove_punc(R, O).
   remove_punc([H | R], [H | O]) :- remove_punc(R, O).
 
+write_list([]).
+write_list([X]) :- write(X), write(".\n").
+write_list([H | T]) :-
+  write(H), write(",\n"),
+  write_list(T), !.
+
+write_recipes([]).
+write_recipes([(X, Y)]):-
+  write(X), write(': '), write(Y), write(".\n").
+write_recipes([(X, Y) | T]):-
+  write(X), write(': '), write(Y), write(",\n"),
+  write_recipes(T), !.
+
+
 %%% Writing to file.
 
 save :-
@@ -471,7 +487,8 @@ i :-
   q.
 
 q :-
-  format("", "\nAsk a query, update recipes, or update ingredients: "),
+  write("\nAsk a query, update recipes, or update ingredients: "),
+  flush_output(current_output),
   readln(L),     % L is an array of words
   remove_punc(L, L2),
   maplist([I,O]>>(downcase_atom(I,O)), L2, L3),
